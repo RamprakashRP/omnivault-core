@@ -1,0 +1,10 @@
+{
+  "name": "blockchain_layer",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "hardhat": "2.22.10",
+    "@nomicfoundation/hardhat-ethers": "3.0.8",
+    "ethers": "6.13.2"
+  }
+}
