@@ -1,0 +1,1 @@
+Patient Name: John Doe Diagnosis: Acute Respiratory Infection Treatment Plan: Prescribed 500mg Amoxicillin. Medical Record Number: MRN9928374 Note: Please update the clinic records for the next patient visit.

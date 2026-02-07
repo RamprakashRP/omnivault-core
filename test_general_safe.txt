@@ -1,0 +1,1 @@
+Project OmniVault Overview: This framework focuses on secure data governance. We are utilizing blockchain to ensure integrity. The system architecture is built on a local-first principle. No sensitive patterns should be found in this specific document.

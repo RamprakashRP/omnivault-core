@@ -13,6 +13,7 @@
     "@tensorflow/tfjs": "^4.22.0",
     "ethers": "^6.16.0",
     "next": "16.1.4",
+    "pdfjs-dist": "^3.11.174",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-highlight-words": "^0.21.0"
@@ -20,8 +21,10 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdfjs-dist": "^2.10.377",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-highlight-words": "^0.20.1",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
