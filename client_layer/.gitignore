@@ -51,3 +51,4 @@ cache/
 typechain-types/
 *.log
 .DS_Store
+.env*.local

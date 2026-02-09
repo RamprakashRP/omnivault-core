@@ -1,48 +1,70 @@
-// This tells TypeScript that the 'window' object has an 'ethereum' property
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
-
+// client_layer/src/lib/blockchain-engine.ts
 import { ethers } from "ethers";
 
-// Use the address you got from your successful deployment earlier
-const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+export const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-// This is the ABI (Application Binary Interface) - it tells Ethers how to talk to your Solidity functions
-const ABI = [
-  "function notarizeDocument(string _fileHash, string _cloudURL) public",
-  "function verifyDocument(string _fileHash) public view returns (string, address, uint256)"
+export const ABI = [
+  "function notarizeDocument(string _fileHash, string _cloudURL, uint256 _price) public",
+  "function purchaseAccess(string _fileHash) public payable",
+  "function checkAccess(string _fileHash, address _user) public view returns (bool)",
+  "function getDocument(string _fileHash) public view returns (string, address, uint256, uint256, bool)"
 ];
 
-export async function notarizeOnChain(fileHash: string) {
+export async function notarizeOnChain(
+  fileHash: string, 
+  s3ObjectKey: string, // The new 2nd argument
+  priceInEth: string = "0" // The 3rd argument
+) {
   try {
-    // 1. Check if MetaMask is even installed
-    if (typeof window.ethereum === 'undefined') {
-      alert("MetaMask not found! Please install the MetaMask extension.");
-      return;
-    }
+    if (!window.ethereum) throw new Error("MetaMask not found!");
 
-    // 2. Check if the user is on the right network (Hardhat)
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const network = await provider.getNetwork();
-    
-    // Hardhat's Chain ID is 31337
-    if (network.chainId !== 31337n) {
-      alert("Wrong Network! Please switch MetaMask to 'Hardhat Local'.");
-      return;
-    }
-
+    const provider = new ethers.BrowserProvider(window.ethereum as any);
     const signer = await provider.getSigner();
     const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-    const tx = await contract.notarizeDocument(fileHash, "cloud://omnivault-storage");
+    const priceInWei = ethers.parseEther(priceInEth || "0");
+
+    // Call the contract with the 3 parameters required by the new Module 2 logic
+    const tx = await contract.notarizeDocument(
+      fileHash, 
+      s3ObjectKey, // This maps to _cloudURL in your Solidity contract
+      priceInWei
+    );
+    
     const receipt = await tx.wait();
     return receipt;
   } catch (error: any) {
     console.error("Blockchain Error:", error);
-    alert("Blockchain Error: " + error.message);
     throw error;
   }
+}
+
+export async function buyAccess(fileHash: string, priceInEth: string) {
+  try {
+    if (!window.ethereum) throw new Error("MetaMask not found");
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+    // Execute the purchase function on the smart contract
+    const tx = await contract.purchaseAccess(fileHash, {
+      value: ethers.parseEther(priceInEth)
+    });
+
+    const receipt = await tx.wait();
+    return receipt;
+  } catch (error: any) {
+    console.error("Purchase Error:", error);
+    throw error;
+  }
+}
+
+export async function fetchDocumentDetails(fileHash: string) {
+    if (!window.ethereum) throw new Error("MetaMask not found");
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    
+    // Fetch mapping: [cloudURL, owner, timestamp, price, isForSale]
+    return await contract.getDocument(fileHash);
 }
