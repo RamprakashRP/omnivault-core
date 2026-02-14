@@ -11,16 +11,15 @@ export default function ProfileCircle() {
   // 1. GLOBAL SIGN OUT LOGIC
   const handleSignOut = () => {
     // These values must match your AWS Cognito Console settings exactly
-    const clientId = "opc42vf6gdku98240aoqoa9c5";
-    const logoutUri = "http://localhost:3000";
+    const currentOrigin = window.location.origin;
+    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID;
     // Replace 'omnivault-auth-yourname' with the actual domain prefix you created in AWS
-    const cognitoDomain = "https://omnivault-auth-yourname.auth.ap-south-2.amazoncognito.com";
-    
+    const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
     // First, clear the local state
     auth.removeUser();
     
     // Then, physically redirect to Cognito to clear the session there
-    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
+    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(currentOrigin)}`;
   };
 
   // 2. IDENTITY LINKING LOGIC (For Step 2 & 3 of your plan)
