@@ -21,6 +21,12 @@ export default function MarketplacePage() {
     setIsProcessing(true);
     try {
       const doc = await fetchDocumentDetails(searchHash);
+
+      if (!doc) {
+        alert("Hash not found on blockchain.");
+        setFoundDoc(null);
+        return; // Stop here if doc is null
+      }
       
       if (!doc.url || doc.url === "") {
         alert("Hash not found on blockchain.");
