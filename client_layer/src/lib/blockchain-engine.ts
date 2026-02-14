@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-// ⚠️ CHANGE THIS: Paste your actual Polygon Amoy Contract Address here
+// ⚠️ Deployed Polygon Amoy Contract Address
 export const CONTRACT_ADDRESS = "0xFaF40DFdd2702a5e22AC4CDbBd5f5461b9a5c13B"; 
 
 export const ABI = [
@@ -10,22 +10,30 @@ export const ABI = [
   "function getDocument(string _fileHash) public view returns (string cloudURL, address owner, uint256 timestamp, uint256 price, bool isForSale)"
 ];
 
-// Helper to ensure MetaMask is on Polygon Amoy (Chain ID: 80002)
+/**
+ * FIX: Manual Gas Pricing for Polygon Amoy
+ * Amoy often rejects transactions with low "tips". 
+ * We set maxPriorityFeePerGas to 30 Gwei to ensure acceptance.
+ */
+const GAS_SETTINGS = {
+  maxPriorityFeePerGas: ethers.parseUnits("30", "gwei"),
+  maxFeePerGas: ethers.parseUnits("50", "gwei")
+};
+
+// Helper to ensure MetaMask is on Polygon Amoy (Chain ID: 80002 / 0x13882)
 const checkNetwork = async () => {
   if (typeof window !== "undefined" && window.ethereum) {
     const chainId = await window.ethereum.request({ method: 'eth_chainId' });
     
-    // 80002 is the Chain ID for Polygon Amoy
-    // In Hexadecimal this is 0x13882
     if (chainId !== '0x13882') {
       try {
-        // This will try to automatically switch the user's MetaMask to Amoy
+        // Attempt to switch to Amoy
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: '0x13882' }],
         });
       } catch (error: any) {
-        // If the network isn't added to MetaMask, this handles it
+        // If the network isn't added, add it automatically
         if (error.code === 4902) {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
@@ -44,14 +52,12 @@ const checkNetwork = async () => {
 };
 
 export const getContract = async () => {
-  // Check if window and window.ethereum exist to satisfy TypeScript
   if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("MetaMask is not installed. Please install it to use this feature.");
   }
 
   await checkNetwork();
 
-  // Use 'any' type for window.ethereum to bypass strict ethers type checks
   const provider = new ethers.BrowserProvider(window.ethereum as any);
   const signer = await provider.getSigner();
   return new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
@@ -62,7 +68,10 @@ export async function notarizeOnChain(fileHash: string, s3ObjectKey: string, pri
     const contract = await getContract();
     const priceInWei = ethers.parseEther(priceInEth || "0");
 
-    const tx = await contract.notarizeDocument(fileHash, s3ObjectKey, priceInWei);
+    // Applied GAS_SETTINGS to resolve "gas price below minimum" errors
+    const tx = await contract.notarizeDocument(fileHash, s3ObjectKey, priceInWei, {
+      ...GAS_SETTINGS
+    });
     return await tx.wait();
   } catch (error: any) {
     console.error("Blockchain Error:", error);
@@ -74,7 +83,8 @@ export async function buyAccess(fileHash: string, priceInEth: string) {
   try {
     const contract = await getContract();
     const tx = await contract.purchaseAccess(fileHash, {
-      value: ethers.parseEther(priceInEth)
+      value: ethers.parseEther(priceInEth),
+      ...GAS_SETTINGS // Applied gas fix here as well
     });
     return await tx.wait();
   } catch (error: any) {
@@ -85,7 +95,6 @@ export async function buyAccess(fileHash: string, priceInEth: string) {
 
 export async function fetchDocumentDetails(fileHash: string) {
   try {
-    // Basic check for window.ethereum before calling contract
     if (typeof window === "undefined" || !window.ethereum) return null;
 
     const contract = await getContract();
