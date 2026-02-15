@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  ChevronDown
 } from "lucide-react";
 import LocalScanner from "@/components/LocalScanner";
 
@@ -35,13 +36,22 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  "Medical": "Medical Data (HIPAA)",
+  "Insurance": "Insurance Records",
+  "Legal": "Legal Contracts",
+  "AI Training": "AI Training Weights",
+  "Other": "Others"
+};
+
 export default function ListDataPage() {
   const auth = useAuth();
   const [fileData, setFileData] = useState<any>(null);
   const [passphrase, setPassphrase] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [dataPrice, setDataPrice] = useState("0.05");
-  const [category, setCategory] = useState("Medical"); // New Category State
+  const [category, setCategory] = useState("Medical");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [encryptionDetails, setEncryptionDetails] = useState<any>(null);
   const [txHash, setTxHash] = useState("");
   const [isFinishing, setIsFinishing] = useState(false);
@@ -164,19 +174,32 @@ export default function ListDataPage() {
         </div>
 
         {/* Category Selection */}
-        <div className="space-y-4">
+        <div className="space-y-4 relative">
           <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Asset Category</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full bg-black/40 border border-slate-800 p-4 rounded-2xl text-sm font-bold text-indigo-400 outline-none focus:ring-1 focus:ring-indigo-500 appearance-none"
+
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="w-full bg-black/40 border border-slate-800 p-4 rounded-2xl text-sm font-bold text-indigo-400 flex justify-between items-center outline-none focus:border-indigo-500 transition-all hover:bg-slate-900"
           >
-            <option value="Medical">Medical Data (HIPAA)</option>
-            <option value="Insurance">Insurance Records</option>
-            <option value="Legal">Legal Contracts</option>
-            <option value="AI Training">AI Training Weights</option>
-            <option value="Other">Other Sensitive Data</option>
-          </select>
+            {CATEGORY_LABELS[category]}
+            <ChevronDown size={16} className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180 text-white' : 'text-slate-500'}`} />
+          </button>
+
+          {isDropdownOpen && (
+            <div className="absolute top-[85px] left-0 right-0 z-50 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                <div
+                  key={key}
+                  onClick={() => { setCategory(key); setIsDropdownOpen(false); }}
+                  className={`p-4 cursor-pointer text-sm font-bold transition-colors border-b border-slate-800 last:border-0 flex items-center justify-between ${category === key ? "bg-indigo-500/10 text-indigo-400" : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                    }`}
+                >
+                  {label}
+                  {category === key && <Check size={14} className="text-indigo-500" />}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Pricing and SHA-256 Section */}
