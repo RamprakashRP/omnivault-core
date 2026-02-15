@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { useAuth } from "react-oidc-context"; // 1. Import Auth for identity linking
-import { Search, ShoppingCart, ShieldCheck, Activity, Cpu, Terminal } from "lucide-react";
+import { Search, ShoppingCart, ShieldCheck, Activity, Cpu, Terminal, ArrowUpDown } from "lucide-react";
 import { getContract, fetchDocumentDetails, verifyAccess, buyAccess } from "@/lib/blockchain-engine";
 
 export default function MarketplacePage() {
@@ -19,6 +19,7 @@ export default function MarketplacePage() {
   // New Marketplace State
   const [marketItems, setMarketItems] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest"); // New Sort State
 
   useEffect(() => {
     fetch("/api/marketplace")
@@ -169,9 +170,24 @@ export default function MarketplacePage() {
             ))}
           </div>
 
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:border-slate-700 transition-all uppercase tracking-wider"
+            >
+              <ArrowUpDown size={14} />
+              <span>Sort: {sortOrder === "newest" ? "Newest First" : "Oldest First"}</span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {marketItems
               .filter((item) => selectedCategory === "All" || item.category === selectedCategory)
+              .sort((a, b) => {
+                const dateA = new Date(a.timestamp).getTime();
+                const dateB = new Date(b.timestamp).getTime();
+                return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+              })
               .map((item) => (
                 <div key={item.assetId} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl hover:border-emerald-500/50 transition-colors group">
                   <div className="flex justify-between items-start mb-4">
