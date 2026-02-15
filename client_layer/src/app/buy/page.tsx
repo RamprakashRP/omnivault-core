@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { useAuth } from "react-oidc-context"; // 1. Import Auth for identity linking
 import { Search, ShoppingCart, ShieldCheck, Activity, Cpu, Terminal } from "lucide-react";
@@ -11,40 +11,53 @@ export default function MarketplacePage() {
   const [searchHash, setSearchHash] = useState("");
   const [foundDoc, setFoundDoc] = useState<any>(null);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
-  
+
   const [trainingScript, setTrainingScript] = useState('print("Initializing OmniVault Secure Session...")\n# Load data from s3_path\n# Run model.fit()');
   const [trainingResult, setTrainingResult] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSearch = async () => {
-    if (!searchHash) return;
+  // New Marketplace State
+  const [marketItems, setMarketItems] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("All");
+
+  useEffect(() => {
+    fetch("/api/marketplace")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setMarketItems(data.assets);
+      })
+      .catch((err) => console.error(err));
+  }, []);
+
+  const executeSearch = async (hash: string) => {
+    setSearchHash(hash);
     setIsProcessing(true);
     try {
-      const doc = await fetchDocumentDetails(searchHash);
+      const doc = await fetchDocumentDetails(hash);
 
       if (!doc) {
         alert("Hash not found on blockchain.");
         setFoundDoc(null);
-        return; // Stop here if doc is null
+        return;
       }
-      
+
       if (!doc.url || doc.url === "") {
         alert("Hash not found on blockchain.");
         setFoundDoc(null);
       } else {
         setFoundDoc({
-          fileHash: searchHash,
+          fileHash: hash,
           url: doc.url,
-          price: doc.price, 
+          price: doc.price,
           owner: doc.owner
         });
 
         const contract = await getContract();
-        const provider = contract.runner?.provider as ethers.BrowserProvider; 
+        const provider = contract.runner?.provider as ethers.BrowserProvider;
         if (provider) {
           const signer = await provider.getSigner();
           const userAddress = await signer.getAddress();
-          const access = await verifyAccess(searchHash, userAddress);
+          const access = await verifyAccess(hash, userAddress);
           setHasAccess(access);
         }
       }
@@ -56,13 +69,15 @@ export default function MarketplacePage() {
     }
   };
 
+  const handleSearch = () => executeSearch(searchHash);
+
   const handlePurchase = async () => {
     if (!foundDoc) return;
     setIsProcessing(true);
     try {
       // 1. Digital Ledger: Execute Blockchain Purchase
       await buyAccess(foundDoc.fileHash, foundDoc.price);
-      
+
       // 2. Physical Index: Sync to DynamoDB for "My Assets"
       // This ensures the purchase is linked to the Google Account
       const userWallet = (window.ethereum as any)?.selectedAddress;
@@ -99,9 +114,9 @@ export default function MarketplacePage() {
       const res = await fetch("/api/run-training", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          fileKey: foundDoc.url, 
-          trainingScript: trainingScript 
+        body: JSON.stringify({
+          fileKey: foundDoc.url,
+          trainingScript: trainingScript
         })
       });
       const data = await res.json();
@@ -120,14 +135,14 @@ export default function MarketplacePage() {
           <Search className="text-emerald-400" /> Marketplace Explorer
         </h1>
         <div className="flex gap-4">
-          <input 
-            type="text" 
-            placeholder="Paste SHA-256 Dataset Hash..." 
+          <input
+            type="text"
+            placeholder="Paste SHA-256 Dataset Hash..."
             value={searchHash}
             onChange={(e) => setSearchHash(e.target.value)}
             className="flex-1 bg-slate-950 border border-slate-700 p-4 rounded-2xl text-sm font-mono text-emerald-500 outline-none"
           />
-          <button 
+          <button
             onClick={handleSearch}
             className="px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-all"
           >
@@ -135,6 +150,55 @@ export default function MarketplacePage() {
           </button>
         </div>
       </div>
+
+      {/* Marketplace Discovery Grid */}
+      {!foundDoc && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 overflow-x-auto pb-4">
+            {["All", "Medical", "Insurance", "Legal", "AI Training", "Other"].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${selectedCategory === cat
+                  ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                  : "bg-slate-900 text-slate-500 border border-slate-800 hover:text-white"
+                  }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {marketItems
+              .filter((item) => selectedCategory === "All" || item.category === selectedCategory)
+              .map((item) => (
+                <div key={item.assetId} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl hover:border-emerald-500/50 transition-colors group">
+                  <div className="flex justify-between items-start mb-4">
+                    <span className="px-3 py-1 bg-slate-800 text-slate-400 text-[10px] font-bold uppercase rounded-full">
+                      {item.category || "Uncategorized"}
+                    </span>
+                    <span className="text-emerald-400 font-mono text-xs">{item.price} ETH</span>
+                  </div>
+                  <h3 className="text-white font-bold text-lg mb-2 truncate" title={item.fileName}>{item.fileName}</h3>
+                  <p className="text-slate-500 text-[10px] font-mono mb-6 truncate">Hash: {item.assetId}</p>
+
+                  <button
+                    onClick={() => executeSearch(item.assetId)}
+                    className="w-full py-3 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white font-bold rounded-xl transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 group-hover:shadow-lg group-hover:shadow-emerald-500/20"
+                  >
+                    <Search size={14} /> View Asset
+                  </button>
+                </div>
+              ))}
+            {marketItems.length === 0 && (
+              <div className="col-span-full text-center py-20 text-slate-600">
+                <p>No assets found in the registry.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {foundDoc && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -148,7 +212,7 @@ export default function MarketplacePage() {
                   {foundDoc.fileHash.substring(0, 10)}...
                 </span>
               </div>
-              
+
               <div className="space-y-4 mb-8">
                 <div>
                   <label className="text-[10px] text-slate-500 font-bold uppercase">Listing Price</label>
@@ -161,7 +225,7 @@ export default function MarketplacePage() {
               </div>
 
               {!hasAccess ? (
-                <button 
+                <button
                   onClick={handlePurchase}
                   disabled={isProcessing}
                   className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black rounded-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
@@ -199,13 +263,13 @@ export default function MarketplacePage() {
                   </div>
                 </div>
 
-                <textarea 
+                <textarea
                   className="w-full h-64 bg-slate-950 border border-slate-800 p-6 rounded-2xl font-mono text-xs text-indigo-300 outline-none focus:ring-1 focus:ring-indigo-500/50"
                   value={trainingScript}
                   onChange={(e) => setTrainingScript(e.target.value)}
                 />
 
-                <button 
+                <button
                   onClick={handleExecuteTraining}
                   disabled={isProcessing}
                   className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition-all shadow-xl shadow-indigo-900/20 flex items-center justify-center gap-3"

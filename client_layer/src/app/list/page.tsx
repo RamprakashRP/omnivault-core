@@ -4,16 +4,16 @@ import { useState, useEffect } from "react";
 import { useAuth } from "react-oidc-context";
 import { cryptoEngine } from "@/lib/crypto-engine";
 import { notarizeOnChain } from "@/lib/blockchain-engine";
-import { 
-  Lock, 
-  Database, 
-  Copy, 
-  Check, 
-  RefreshCw, 
-  ShieldCheck, 
-  Eye, 
-  EyeOff, 
-  Loader2 
+import {
+  Lock,
+  Database,
+  Copy,
+  Check,
+  RefreshCw,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  Loader2
 } from "lucide-react";
 import LocalScanner from "@/components/LocalScanner";
 
@@ -26,8 +26,8 @@ function CopyButton({ text }: { text: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <button 
-      onClick={doCopy} 
+    <button
+      onClick={doCopy}
       className="p-2.5 bg-slate-800/50 hover:bg-slate-700 rounded-xl transition-all"
     >
       {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} className="text-slate-500" />}
@@ -41,6 +41,7 @@ export default function ListDataPage() {
   const [passphrase, setPassphrase] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [dataPrice, setDataPrice] = useState("0.05");
+  const [category, setCategory] = useState("Medical"); // New Category State
   const [encryptionDetails, setEncryptionDetails] = useState<any>(null);
   const [txHash, setTxHash] = useState("");
   const [isFinishing, setIsFinishing] = useState(false);
@@ -64,15 +65,15 @@ export default function ListDataPage() {
       const content = fileData.isMasking ? fileData.display : fileData.raw;
       const result = await cryptoEngine.encryptFile(content, passphrase);
       setEncryptionDetails(result);
-      
+
       // 2. Upload to S3 with REAL filename
-      const response = await fetch("/api/upload-url", { 
-        method: "POST", 
-        body: JSON.stringify({ fileName: fileData.fileName }) 
+      const response = await fetch("/api/upload-url", {
+        method: "POST",
+        body: JSON.stringify({ fileName: fileData.fileName })
       });
       const { url, fileKey } = await response.json();
       await fetch(url, { method: "PUT", body: result.encryptedData });
-      
+
       // 3. Blockchain Notarization
       const receipt = await notarizeOnChain(result.fileHash, fileKey, dataPrice);
       setTxHash(receipt.hash);
@@ -88,27 +89,29 @@ export default function ListDataPage() {
             fileName: fileData.fileName, // NOW DYNAMIC
             fileType: fileData.fileType,
             sha256: result.fileHash,
-            action: "LISTED"
+            action: "LISTED",
+            category: category,
+            price: dataPrice
           }),
         });
       }
-      
+
       alert("🚀 Process Success: " + fileData.fileName + " listed!");
-    } catch (e: any) { 
+    } catch (e: any) {
       console.error(e);
-      alert(e.message); 
-    } finally { 
-      setIsFinishing(false); 
+      alert(e.message);
+    } finally {
+      setIsFinishing(false);
     }
   };
 
   return (
     <div className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-10 animate-in fade-in duration-700">
-      
+
       {/* LEFT COLUMN: Local AI Scanner & Preview */}
       <div className="space-y-6">
         <LocalScanner onAnalysisComplete={setFileData} />
-        
+
         {fileData && (
           <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 space-y-4 shadow-2xl">
             <h3 className="text-[10px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
@@ -128,28 +131,28 @@ export default function ListDataPage() {
 
       {/* RIGHT COLUMN: Security Settings & Marketplace Notarization */}
       <div className="bg-slate-900/50 border border-slate-800 p-10 rounded-[3rem] space-y-8 shadow-inner">
-        
+
         {/* Passphrase Section */}
         <div className="space-y-4">
           <label className="text-[10px] font-black text-slate-500 uppercase flex justify-between items-center">
             Vault Passphrase
-            <button 
-              onClick={generatePassphrase} 
+            <button
+              onClick={generatePassphrase}
               className="text-indigo-400 hover:rotate-180 transition-all duration-500 flex items-center gap-1"
             >
               <RefreshCw size={12} /> Regenerate
             </button>
           </label>
           <div className="relative group">
-            <input 
-              type={showPass ? "text" : "password"} 
-              value={passphrase} 
+            <input
+              type={showPass ? "text" : "password"}
+              value={passphrase}
               readOnly
-              className="w-full bg-black/40 border border-slate-800 p-5 rounded-2xl text-sm font-mono text-indigo-400 pr-28 outline-none focus:border-indigo-500/50 transition-colors" 
+              className="w-full bg-black/40 border border-slate-800 p-5 rounded-2xl text-sm font-mono text-indigo-400 pr-28 outline-none focus:border-indigo-500/50 transition-colors"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <button 
-                onClick={() => setShowPass(!showPass)} 
+              <button
+                onClick={() => setShowPass(!showPass)}
                 className="p-2 text-slate-500 hover:text-white transition-colors"
                 title={showPass ? "Hide Passphrase" : "Show Passphrase"}
               >
@@ -160,33 +163,49 @@ export default function ListDataPage() {
           </div>
         </div>
 
+        {/* Category Selection */}
+        <div className="space-y-4">
+          <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Asset Category</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full bg-black/40 border border-slate-800 p-4 rounded-2xl text-sm font-bold text-indigo-400 outline-none focus:ring-1 focus:ring-indigo-500 appearance-none"
+          >
+            <option value="Medical">Medical Data (HIPAA)</option>
+            <option value="Insurance">Insurance Records</option>
+            <option value="Legal">Legal Contracts</option>
+            <option value="AI Training">AI Training Weights</option>
+            <option value="Other">Other Sensitive Data</option>
+          </select>
+        </div>
+
         {/* Pricing and SHA-256 Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Market Price (ETH)</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  value={dataPrice} 
-                  onChange={(e) => setDataPrice(e.target.value)} 
-                  className="w-full bg-black/40 border border-slate-800 p-4 rounded-2xl text-xl font-bold text-white mt-1 outline-none focus:ring-1 focus:ring-indigo-500" 
-                />
+          <div>
+            <label className="text-[10px] font-black text-slate-500 uppercase ml-1">Market Price (ETH)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={dataPrice}
+              onChange={(e) => setDataPrice(e.target.value)}
+              className="w-full bg-black/40 border border-slate-800 p-4 rounded-2xl text-xl font-bold text-white mt-1 outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+          {encryptionDetails && (
+            <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-2xl flex items-center justify-between">
+              <div className="overflow-hidden">
+                <p className="text-[9px] font-black text-emerald-500 uppercase">SHA-256 Fingerprint</p>
+                <p className="text-[10px] font-mono text-slate-400 truncate">{encryptionDetails.fileHash}</p>
+              </div>
+              <CopyButton text={encryptionDetails.fileHash} />
             </div>
-            {encryptionDetails && (
-                <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-2xl flex items-center justify-between">
-                    <div className="overflow-hidden">
-                        <p className="text-[9px] font-black text-emerald-500 uppercase">SHA-256 Fingerprint</p>
-                        <p className="text-[10px] font-mono text-slate-400 truncate">{encryptionDetails.fileHash}</p>
-                    </div>
-                    <CopyButton text={encryptionDetails.fileHash} />
-                </div>
-            )}
+          )}
         </div>
 
         {/* Finalize Button */}
-        <button 
-          onClick={handleFinalize} 
-          disabled={!fileData || isFinishing} 
+        <button
+          onClick={handleFinalize}
+          disabled={!fileData || isFinishing}
           className="w-full py-6 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-3xl shadow-2xl shadow-indigo-500/30 transition-all uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-30 disabled:cursor-not-allowed group"
         >
           {isFinishing ? (

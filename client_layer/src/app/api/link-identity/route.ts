@@ -14,7 +14,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 // POST: Save a new asset link
 export async function POST(req: Request) {
   try {
-    const { email, walletAddress, fileName, fileType, sha256, action } = await req.json();
+    const { email, walletAddress, fileName, fileType, sha256, action, category, price } = await req.json();
 
     const command = new PutCommand({
       TableName: "OmniVault_Users",
@@ -24,8 +24,10 @@ export async function POST(req: Request) {
         walletAddress,
         fileName,
         fileType,
-        action,                   
-        sha256: sha256,           
+        action,
+        category: category || "Uncategorized",
+        price: price || "0",
+        sha256: sha256,
         timestamp: new Date().toISOString(), // Full Date & Time
       },
     });
