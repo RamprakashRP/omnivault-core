@@ -11,14 +11,15 @@ export const ABI = [
 ];
 
 /**
- * AMOY GAS FIX:
- * The network now requires a much higher 'Priority Fee' (Tip).
- * We are setting it to 100 Gwei to ensure it clears the 25 Gwei floor mentioned in your error.
+ * REINFORCED AMOY GAS SETTINGS:
+ * Your error showed that the network needs at least 25 Gwei (25,000,000,000).
+ * We are setting the Priority Fee (tip) to 40 Gwei to be absolutely safe.
+ * We also provide a fixed gasLimit to prevent the "estimateGas" error from blocking the popup.
  */
 const GAS_SETTINGS = {
-  maxPriorityFeePerGas: ethers.parseUnits("100", "gwei"), // High tip to clear the 2.5Gwei - 25Gwei floor
-  maxFeePerGas: ethers.parseUnits("150", "gwei"),        // Total gas cap
-  gasLimit: 500000                                      // Manual gas limit to skip 'estimateGas' failures
+  maxPriorityFeePerGas: ethers.parseUnits("40", "gwei"), // Clears the 25 Gwei floor
+  maxFeePerGas: ethers.parseUnits("60", "gwei"),        // Total gas cap
+  gasLimit: 800000                                      // Bypasses estimateGas failures
 };
 
 const checkNetwork = async () => {
@@ -37,6 +38,7 @@ const checkNetwork = async () => {
             params: [{
               chainId: '0x13882',
               chainName: 'Polygon Amoy Testnet',
+              // Updated to POL branding to match latest Polygon standards
               nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
               rpcUrls: ['https://rpc-amoy.polygon.technology'],
               blockExplorerUrls: ['https://amoy.polygonscan.com']
@@ -63,7 +65,7 @@ export async function notarizeOnChain(fileHash: string, s3ObjectKey: string, pri
     const contract = await getContract();
     const priceInWei = ethers.parseEther(priceInEth || "0");
 
-    // We pass the GAS_SETTINGS to bypass the 'below minimum' error
+    // Passing GAS_SETTINGS to resolve the "gas price below minimum" error
     const tx = await contract.notarizeDocument(fileHash, s3ObjectKey, priceInWei, {
       ...GAS_SETTINGS
     });
@@ -78,21 +80,30 @@ export async function buyAccess(fileHash: string, priceInEth: string) {
   try {
     const contract = await getContract();
     
-    // Check if user is trying to buy their own file (prevents revert error)
+    // Safety check: Prevents "missing revert data" by stopping owners from buying their own file
     const doc = await contract.getDocument(fileHash);
-    const signer = await (new ethers.BrowserProvider(window.ethereum as any)).getSigner();
-    if (doc[1].toLowerCase() === (await signer.getAddress()).toLowerCase()) {
-      throw new Error("You already own this asset. Buying your own asset will cause a contract revert.");
+    const provider = new ethers.BrowserProvider(window.ethereum as any);
+    const signer = await provider.getSigner();
+    const userAddress = (await signer.getAddress()).toLowerCase();
+    
+    if (doc[1].toLowerCase() === userAddress) {
+      throw new Error("Self-Purchase Error: You are the owner of this asset.");
+    }
+
+    // Check if already bought
+    const alreadyHasAccess = await contract.checkAccess(fileHash, userAddress);
+    if (alreadyHasAccess) {
+      throw new Error("Already Purchased: You already have access to this asset.");
     }
 
     const tx = await contract.purchaseAccess(fileHash, {
       value: ethers.parseEther(priceInEth),
-      ...GAS_SETTINGS
+      ...GAS_SETTINGS // Forces the transaction even if gas estimation is weird
     });
     return await tx.wait();
   } catch (error: any) {
-    // Better error message for the user
-    const msg = error.reason || error.message || "Transaction failed";
+    // Provide a more readable error message for the UI
+    const msg = error.reason || error.message || "Purchase failed on-chain";
     console.error("Purchase Error:", msg);
     throw new Error(msg);
   }
@@ -103,7 +114,11 @@ export async function fetchDocumentDetails(fileHash: string) {
     if (typeof window === "undefined" || !window.ethereum) return null;
     const contract = await getContract();
     const doc = await contract.getDocument(fileHash);
-    if (doc[1] === "0x0000000000000000000000000000000000000000") return null;
+    
+    // Check if the document exists (owner is not zero address)
+    if (doc[1] === "0x0000000000000000000000000000000000000000") {
+      return null;
+    }
     
     return {
       url: doc[0],
@@ -112,6 +127,7 @@ export async function fetchDocumentDetails(fileHash: string) {
       isForSale: doc[4]
     };
   } catch (error) {
+    console.error("Fetch Doc Details Error:", error);
     return null;
   }
 }
@@ -122,6 +138,7 @@ export async function verifyAccess(fileHash: string, userAddress: string) {
     const contract = await getContract();
     return await contract.checkAccess(fileHash, userAddress);
   } catch (error) {
+    console.error("Verify Access Error:", error);
     return false;
   }
 }
