@@ -10,9 +10,9 @@ export default function MyAssetsPage() {
   const [activeTab, setActiveTab] = useState<"LISTED" | "BOUGHT">("LISTED");
   const [assets, setAssets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Notification State
-  const [notification, setNotification] = useState<{msg: string, type: NotificationType} | null>(null);
+  const [notification, setNotification] = useState<{ msg: string, type: NotificationType } | null>(null);
 
   const showNotify = (msg: string, type: NotificationType) => setNotification({ msg, type });
 
@@ -57,10 +57,10 @@ export default function MyAssetsPage() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-10">
       {notification && (
-        <VaultNotification 
-          message={notification.msg} 
-          type={notification.type} 
-          onClose={() => setNotification(null)} 
+        <VaultNotification
+          message={notification.msg}
+          type={notification.type}
+          onClose={() => setNotification(null)}
         />
       )}
 
@@ -69,9 +69,9 @@ export default function MyAssetsPage() {
           <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Vault Assets</h1>
           <p className="text-slate-500 text-sm italic">Audit trail of physical-digital identity links.</p>
         </div>
-        
+
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={exportAuditTrail}
             className="flex items-center gap-2 px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-black uppercase rounded-xl border border-slate-700 transition-all"
           >
@@ -102,7 +102,7 @@ export default function MyAssetsPage() {
                     <span className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase bg-black/40 px-3 py-1.5 rounded-lg border border-slate-800">
                       <Clock size={12} className="text-indigo-400" /> {new Date(asset.timestamp).toLocaleString()}
                     </span>
-                    <button 
+                    <button
                       onClick={() => { navigator.clipboard.writeText(asset.sha256); showNotify("Hash Copied to Clipboard", "moderate"); }}
                       className="flex items-center gap-2 text-[10px] font-mono text-slate-400 uppercase bg-black/40 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-indigo-500 transition-all"
                     >
@@ -111,14 +111,14 @@ export default function MyAssetsPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-4 w-full lg:w-auto">
                 {activeTab === "LISTED" ? (
                   <button className="w-full lg:w-auto flex items-center justify-center gap-3 px-10 py-4 bg-slate-800 hover:bg-emerald-600 text-white text-[10px] font-black uppercase rounded-2xl transition-all shadow-lg group">
                     <Download size={18} /> Download
                   </button>
                 ) : (
-                  <button onClick={() => window.location.href='/buy'} className="w-full lg:w-auto flex items-center justify-center gap-3 px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase rounded-2xl transition-all shadow-xl shadow-indigo-900/40">
+                  <button onClick={() => window.location.href = `/buy?hash=${asset.assetId}`} className="w-full lg:w-auto flex items-center justify-center gap-3 px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase rounded-2xl transition-all shadow-xl shadow-indigo-900/40">
                     <Cpu size={18} /> Open Training Room
                   </button>
                 )}

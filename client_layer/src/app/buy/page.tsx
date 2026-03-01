@@ -4,10 +4,25 @@ import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { useAuth } from "react-oidc-context";
 import { Search, ShoppingCart, ShieldCheck, Activity, Cpu, Terminal, ArrowUpDown, FileCode, Upload, Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { getContract, fetchDocumentDetails, verifyAccess, buyAccess } from "@/lib/blockchain-engine";
 
 export default function MarketplacePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-[60vh] items-center justify-center">
+        <Activity className="animate-spin text-indigo-500" size={40} />
+      </div>
+    }>
+      <MarketplaceContent />
+    </Suspense>
+  );
+}
+
+function MarketplaceContent() {
+  const searchParams = useSearchParams();
+  const hashParam = searchParams.get("hash");
   const auth = useAuth();
   const [searchHash, setSearchHash] = useState("");
   const [foundDoc, setFoundDoc] = useState<any>(null);
@@ -31,7 +46,12 @@ export default function MarketplacePage() {
         if (data.success) setMarketItems(data.assets);
       })
       .catch((err) => console.error(err));
-  }, []);
+
+    // Handle Deep Linking from Purchases
+    if (hashParam) {
+      executeSearch(hashParam);
+    }
+  }, [hashParam]);
 
   const executeSearch = async (hash: string) => {
     setSearchHash(hash);
