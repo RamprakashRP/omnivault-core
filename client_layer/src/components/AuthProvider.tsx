@@ -3,16 +3,11 @@
 import { AuthProvider } from "react-oidc-context";
 import { ReactNode } from "react";
 
-// FORCE the production URL to match AWS Cognito settings
-// This prevents the "preview" URLs from breaking the login flow
 const getRedirectUri = () => {
   if (typeof window !== "undefined") {
-    // If we are on localhost, use localhost
     if (window.location.hostname === "localhost") {
       return "http://localhost:3000";
     }
-    // For EVERYTHING else (even preview links), use the main production URL
-    // Make sure this matches exactly what you typed in the AWS Console
     return "https://omnivault-core.vercel.app";
   }
   return "http://localhost:3000";

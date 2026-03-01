@@ -1,7 +1,6 @@
 import { ethers } from "ethers";
 
-// ⚠️ Ensure this is your current Amoy Contract Address
-export const CONTRACT_ADDRESS = "0xFaF40DFdd2702a5e22AC4CDbBd5f5461b9a5c13B"; 
+export const CONTRACT_ADDRESS = "0xFaF40DFdd2702a5e22AC4CDbBd5f5461b9a5c13B";
 
 export const ABI = [
   "function notarizeDocument(string _fileHash, string _cloudURL, uint256 _price) public",
@@ -10,16 +9,11 @@ export const ABI = [
   "function getDocument(string _fileHash) public view returns (string cloudURL, address owner, uint256 timestamp, uint256 price, bool isForSale)"
 ];
 
-/**
- * REINFORCED AMOY GAS SETTINGS:
- * Your error showed that the network needs at least 25 Gwei (25,000,000,000).
- * We are setting the Priority Fee (tip) to 40 Gwei to be absolutely safe.
- * We also provide a fixed gasLimit to prevent the "estimateGas" error from blocking the popup.
- */
+// Network specific gas configurations
 const GAS_SETTINGS = {
-  maxPriorityFeePerGas: ethers.parseUnits("40", "gwei"), // Clears the 25 Gwei floor
-  maxFeePerGas: ethers.parseUnits("60", "gwei"),        // Total gas cap
-  gasLimit: 800000                                      // Bypasses estimateGas failures
+  maxPriorityFeePerGas: ethers.parseUnits("40", "gwei"),
+  maxFeePerGas: ethers.parseUnits("60", "gwei"),
+  gasLimit: 800000
 };
 
 const checkNetwork = async () => {
@@ -38,7 +32,7 @@ const checkNetwork = async () => {
             params: [{
               chainId: '0x13882',
               chainName: 'Polygon Amoy Testnet',
-              // Updated to POL branding to match latest Polygon standards
+              // Polygon specific currency settings
               nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
               rpcUrls: ['https://rpc-amoy.polygon.technology'],
               blockExplorerUrls: ['https://amoy.polygonscan.com']
@@ -65,7 +59,6 @@ export async function notarizeOnChain(fileHash: string, s3ObjectKey: string, pri
     const contract = await getContract();
     const priceInWei = ethers.parseEther(priceInEth || "0");
 
-    // Passing GAS_SETTINGS to resolve the "gas price below minimum" error
     const tx = await contract.notarizeDocument(fileHash, s3ObjectKey, priceInWei, {
       ...GAS_SETTINGS
     });
@@ -79,18 +72,16 @@ export async function notarizeOnChain(fileHash: string, s3ObjectKey: string, pri
 export async function buyAccess(fileHash: string, priceInEth: string) {
   try {
     const contract = await getContract();
-    
-    // Safety check: Prevents "missing revert data" by stopping owners from buying their own file
+
     const doc = await contract.getDocument(fileHash);
     const provider = new ethers.BrowserProvider(window.ethereum as any);
     const signer = await provider.getSigner();
     const userAddress = (await signer.getAddress()).toLowerCase();
-    
+
     if (doc[1].toLowerCase() === userAddress) {
       throw new Error("Self-Purchase Error: You are the owner of this asset.");
     }
 
-    // Check if already bought
     const alreadyHasAccess = await contract.checkAccess(fileHash, userAddress);
     if (alreadyHasAccess) {
       throw new Error("Already Purchased: You already have access to this asset.");
@@ -98,11 +89,10 @@ export async function buyAccess(fileHash: string, priceInEth: string) {
 
     const tx = await contract.purchaseAccess(fileHash, {
       value: ethers.parseEther(priceInEth),
-      ...GAS_SETTINGS // Forces the transaction even if gas estimation is weird
+      ...GAS_SETTINGS
     });
     return await tx.wait();
   } catch (error: any) {
-    // Provide a more readable error message for the UI
     const msg = error.reason || error.message || "Purchase failed on-chain";
     console.error("Purchase Error:", msg);
     throw new Error(msg);
@@ -114,12 +104,11 @@ export async function fetchDocumentDetails(fileHash: string) {
     if (typeof window === "undefined" || !window.ethereum) return null;
     const contract = await getContract();
     const doc = await contract.getDocument(fileHash);
-    
-    // Check if the document exists (owner is not zero address)
+
     if (doc[1] === "0x0000000000000000000000000000000000000000") {
       return null;
     }
-    
+
     return {
       url: doc[0],
       owner: doc[1],

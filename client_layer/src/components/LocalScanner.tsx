@@ -20,8 +20,6 @@ export default function LocalScanner({ onAnalysisComplete }: { onAnalysisComplet
   const performMasking = (text: string, entities: any[], mask: boolean) => {
     if (!mask) return text;
     let masked = text;
-    // naive replacement - for production, use index slicing
-    // specific entities might be caught multiple times or overlap, so we start with specific high-value replacements
     const uniqueEntities = Array.from(new Set(entities.map(e => e.word))) as string[];
     uniqueEntities.forEach(word => {
       // Escape regex special characters in the word
@@ -65,12 +63,10 @@ export default function LocalScanner({ onAnalysisComplete }: { onAnalysisComplet
 
       setRawText(extractedText);
 
-      // --- OMNIVAULT AI ENGINE ---
       const analysis = await aiEngine.scanText(extractedText);
       setAiResult(analysis);
 
       const display = performMasking(extractedText, analysis.entities, isMasking);
-      // Get unique types found
       const findings = Array.from(new Set(analysis.entities.map((e: any) => e.type))) as string[];
 
       onAnalysisComplete({

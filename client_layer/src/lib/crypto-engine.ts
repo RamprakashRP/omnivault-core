@@ -1,4 +1,3 @@
-// Layer A: Client-Side Security Logic
 export class OmniVaultCrypto {
   private algorithm = { name: "AES-GCM", length: 256 };
 
@@ -16,7 +15,7 @@ export class OmniVaultCrypto {
 
   async encryptFile(fileData: string, passphrase: string) {
     const key = await this.getEncryptionKey(passphrase);
-    const iv = crypto.getRandomValues(new Uint8Array(12)); 
+    const iv = crypto.getRandomValues(new Uint8Array(12));
     const encoder = new TextEncoder();
     const encodedData = encoder.encode(fileData);
 
@@ -35,11 +34,8 @@ export class OmniVaultCrypto {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    // --- CRITICAL CHANGES FOR AWS S3 COMPATIBILITY ---
     return {
-      // 1. Change name to 'encryptedData' to match page.tsx
-      // 2. Return as a Blob (Actual binary) instead of Base64
-      encryptedData: new Blob([combined], { type: "application/octet-stream" }), 
+      encryptedData: new Blob([combined], { type: "application/octet-stream" }),
       fileHash,
       timestamp: Date.now()
     };

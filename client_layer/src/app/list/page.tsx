@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import LocalScanner from "@/components/LocalScanner";
 
-// Reusable Copy Button Component
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const doCopy = () => {
@@ -56,7 +55,6 @@ export default function ListDataPage() {
   const [txHash, setTxHash] = useState("");
   const [isFinishing, setIsFinishing] = useState(false);
 
-  // Auto-generate strong passphrase using browser crypto
   const generatePassphrase = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*";
     const pass = Array.from(crypto.getRandomValues(new Uint32Array(16)))
@@ -64,19 +62,16 @@ export default function ListDataPage() {
     setPassphrase(pass);
   };
 
-  // Generate initial passphrase on mount
   useEffect(() => { generatePassphrase(); }, []);
 
   const handleFinalize = async () => {
     if (!fileData || !passphrase) return;
     setIsFinishing(true);
     try {
-      // 1. Encrypt the specific content selected by the user
       const content = fileData.isMasking ? fileData.display : fileData.raw;
       const result = await cryptoEngine.encryptFile(content, passphrase);
       setEncryptionDetails(result);
 
-      // 2. Upload to S3 with REAL filename
       const response = await fetch("/api/upload-url", {
         method: "POST",
         body: JSON.stringify({ fileName: fileData.fileName })
@@ -84,11 +79,9 @@ export default function ListDataPage() {
       const { url, fileKey } = await response.json();
       await fetch(url, { method: "PUT", body: result.encryptedData });
 
-      // 3. Blockchain Notarization
       const receipt = await notarizeOnChain(result.fileHash, fileKey, dataPrice);
       setTxHash(receipt.hash);
 
-      // 4. Sync REAL metadata to DynamoDB
       const userWallet = (window.ethereum as any)?.selectedAddress;
       if (auth.user?.profile.email && userWallet) {
         await fetch("/api/link-identity", {
@@ -96,7 +89,7 @@ export default function ListDataPage() {
           body: JSON.stringify({
             email: auth.user.profile.email,
             walletAddress: userWallet,
-            fileName: fileData.fileName, // NOW DYNAMIC
+            fileName: fileData.fileName,
             fileType: fileData.fileType,
             sha256: result.fileHash,
             action: "LISTED",
@@ -118,7 +111,6 @@ export default function ListDataPage() {
   return (
     <div className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-10 animate-in fade-in duration-700">
 
-      {/* LEFT COLUMN: Local AI Scanner & Preview */}
       <div className="space-y-6">
         <LocalScanner onAnalysisComplete={setFileData} />
 
@@ -139,7 +131,6 @@ export default function ListDataPage() {
         )}
       </div>
 
-      {/* RIGHT COLUMN: Security Settings & Marketplace Notarization */}
       <div className="bg-slate-900/50 border border-slate-800 p-10 rounded-[3rem] space-y-8 shadow-inner">
 
         {/* Passphrase Section */}

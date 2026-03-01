@@ -6,8 +6,7 @@ import { Shield, ShoppingBag, PlusSquare, Database, Lock, Cpu, Search } from "lu
 export default function OmniVaultDashboard() {
   return (
     <div className="max-w-6xl mx-auto space-y-12 py-10 animate-in fade-in duration-1000">
-      
-      {/* --- HERO SECTION --- */}
+
       <section className="text-center space-y-6">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest">
           <Shield size={12} /> Milestone 2: Hybrid Web3 Enabled
@@ -19,12 +18,11 @@ export default function OmniVaultDashboard() {
           </span>
         </h1>
         <p className="text-slate-400 max-w-2xl mx-auto text-lg leading-relaxed">
-          The first decentralized marketplace that allows AI models to train on private data 
+          The first decentralized marketplace that allows AI models to train on private data
           without the data ever leaving the owner's vault.
         </p>
       </section>
 
-      {/* --- MAIN NAVIGATION CARDS --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Link href="/list" className="group">
           <div className="h-full p-8 bg-slate-900 border border-slate-800 rounded-[2.5rem] hover:border-emerald-500/50 hover:bg-slate-800/50 transition-all duration-500 flex flex-col justify-between">

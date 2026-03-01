@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { useAuth } from "react-oidc-context"; // 1. Import Auth for identity linking
+import { useAuth } from "react-oidc-context";
 import { Search, ShoppingCart, ShieldCheck, Activity, Cpu, Terminal, ArrowUpDown, FileCode, Upload, Trash2 } from "lucide-react";
 import { useRef } from "react";
 import { getContract, fetchDocumentDetails, verifyAccess, buyAccess } from "@/lib/blockchain-engine";
 
 export default function MarketplacePage() {
-  const auth = useAuth(); // 2. Initialize Auth context
+  const auth = useAuth();
   const [searchHash, setSearchHash] = useState("");
   const [foundDoc, setFoundDoc] = useState<any>(null);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
@@ -20,7 +20,7 @@ export default function MarketplacePage() {
   // New Marketplace State
   const [marketItems, setMarketItems] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest"); // New Sort State
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -79,11 +79,8 @@ export default function MarketplacePage() {
     if (!foundDoc) return;
     setIsProcessing(true);
     try {
-      // 1. Digital Ledger: Execute Blockchain Purchase
       await buyAccess(foundDoc.fileHash, foundDoc.price);
 
-      // 2. Physical Index: Sync to DynamoDB for "My Assets"
-      // This ensures the purchase is linked to the Google Account
       const userWallet = (window.ethereum as any)?.selectedAddress;
       const userEmail = auth.user?.profile.email;
 
@@ -97,7 +94,7 @@ export default function MarketplacePage() {
             fileName: foundDoc.url, // Using URL as placeholder for name
             fileType: "application/octet-stream",
             sha256: foundDoc.fileHash,
-            action: "BOUGHT", // Links it to the Purchases tab
+            action: "BOUGHT",
             timestamp: new Date().toISOString()
           }),
         });
@@ -141,7 +138,6 @@ export default function MarketplacePage() {
     try {
       const content = await file.text();
       setTrainingScript(content);
-      // Optional: Give feedback that file was loaded
     } catch (error) {
       console.error("File read failed:", error);
       alert("Failed to read the code file.");
