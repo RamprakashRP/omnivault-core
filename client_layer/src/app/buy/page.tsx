@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { useAuth } from "react-oidc-context"; // 1. Import Auth for identity linking
-import { Search, ShoppingCart, ShieldCheck, Activity, Cpu, Terminal, ArrowUpDown } from "lucide-react";
+import { Search, ShoppingCart, ShieldCheck, Activity, Cpu, Terminal, ArrowUpDown, FileCode, Upload, Trash2 } from "lucide-react";
+import { useRef } from "react";
 import { getContract, fetchDocumentDetails, verifyAccess, buyAccess } from "@/lib/blockchain-engine";
 
 export default function MarketplacePage() {
@@ -20,6 +21,8 @@ export default function MarketplacePage() {
   const [marketItems, setMarketItems] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest"); // New Sort State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     fetch("/api/marketplace")
@@ -111,6 +114,7 @@ export default function MarketplacePage() {
 
   const handleExecuteTraining = async () => {
     setIsProcessing(true);
+    setTrainingResult(null);
     try {
       const res = await fetch("/api/run-training", {
         method: "POST",
@@ -126,6 +130,24 @@ export default function MarketplacePage() {
       alert("Training failed. Ensure AWS Lambda is active.");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const content = await file.text();
+      setTrainingScript(content);
+      // Optional: Give feedback that file was loaded
+    } catch (error) {
+      console.error("File read failed:", error);
+      alert("Failed to read the code file.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -273,17 +295,49 @@ export default function MarketplacePage() {
                   <h3 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-tighter">
                     <Cpu className="text-indigo-400" /> Secure AI Clean Room
                   </h3>
-                  <div className="flex gap-2 items-center">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest">Isolated Environment Active</span>
+                  <div className="flex gap-4 items-center">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      onChange={handleFileUpload}
+                      accept=".py,.txt,.js,.ts,.json"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-[10px] font-black uppercase text-indigo-400 rounded-xl border border-indigo-500/20 flex items-center gap-2 transition-all"
+                    >
+                      {isUploading ? <Activity size={14} className="animate-spin" /> : <Upload size={14} />}
+                      {isUploading ? "Reading..." : "Upload Script"}
+                    </button>
+                    <div className="flex gap-2 items-center">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest">Isolated Environment Active</span>
+                    </div>
                   </div>
                 </div>
 
-                <textarea
-                  className="w-full h-64 bg-slate-950 border border-slate-800 p-6 rounded-2xl font-mono text-xs text-indigo-300 outline-none focus:ring-1 focus:ring-indigo-500/50"
-                  value={trainingScript}
-                  onChange={(e) => setTrainingScript(e.target.value)}
-                />
+                <div className="relative group">
+                  <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => setTrainingScript("")}
+                      className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded-lg transition-all"
+                      title="Clear Script"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <textarea
+                    className="w-full h-80 bg-slate-950 border border-slate-800 p-8 rounded-2xl font-mono text-xs text-indigo-300 outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all scrollbar-thin scrollbar-thumb-slate-800"
+                    placeholder="Paste weights training logic or upload a script..."
+                    value={trainingScript}
+                    onChange={(e) => setTrainingScript(e.target.value)}
+                  />
+                  <div className="absolute bottom-4 right-6 text-[9px] font-bold text-slate-700 uppercase tracking-widest">
+                    {trainingScript.split('\n').length} Lines • UTF-8 Secure
+                  </div>
+                </div>
 
                 <button
                   onClick={handleExecuteTraining}
@@ -295,11 +349,40 @@ export default function MarketplacePage() {
                 </button>
 
                 {trainingResult && (
-                  <div className="mt-6 p-6 bg-black/40 rounded-2xl border border-indigo-500/30 overflow-hidden">
-                    <label className="text-[10px] text-indigo-400 font-black uppercase tracking-widest block mb-4">Execution Output</label>
-                    <pre className="text-xs text-slate-300 font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto italic">
-                      {JSON.stringify(trainingResult, null, 2)}
-                    </pre>
+                  <div className="mt-6 p-8 bg-black/40 rounded-[2rem] border border-indigo-500/30 overflow-hidden space-y-6">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] text-indigo-400 font-black uppercase tracking-widest block">Execution Output</label>
+                      {trainingResult.weight_id && (
+                        <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase rounded-full finger-print">
+                          Weight ID: {trainingResult.weight_id}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      {trainingResult.status === "success" && (
+                        <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+                          <p className="text-xs text-slate-300 leading-relaxed italic">
+                            <span className="text-emerald-500 font-bold">✓ Training Complete:</span> {trainingResult.message || "Model weights extracted and notarized in secure enclave."}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800/50">
+                        <pre className="text-xs text-slate-300 font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto italic selection:bg-indigo-500/30">
+                          {JSON.stringify(trainingResult, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+
+                    {trainingResult.weight_id && (
+                      <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
+                        <span className="text-[9px] text-slate-600 font-bold uppercase tracking-tighter italic">Weight extraction verified by AWS Lambda Attestation</span>
+                        <div className="flex gap-2">
+                          <button className="px-3 py-1.5 bg-slate-800 text-slate-400 hover:text-white text-[9px] font-bold uppercase rounded-lg transition-colors border border-slate-700">Download Weights</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
